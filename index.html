@@ -1,1 +1,1432 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Belajar Django Lebih Dalam</title>
+    <!-- Chosen Palette: Calm Harmony (Slate, Indigo, White) -->
+    <!-- Application Structure Plan: A single-page application with a fixed left sidebar for primary navigation on desktop, and a hidden, slide-out menu for mobile. The main content area dynamically loads different sections based on navigation clicks. Each section will further utilize accordions for sub-topics and code examples, providing a hierarchical and expandable content structure. This design prioritizes deep-dive exploration without leaving the page, allowing users to control their learning pace and focus on specific areas. -->
+    <!-- Visualization & Content Choices:
+        - Main Navigation: Goal: Provide clear topic hierarchy. Method: Sidebar (desktop), hamburger menu (mobile) with JS-driven content switching. Interaction: Click to show section. Justification: Enables non-linear exploration of complex topics. Library: None (HTML/CSS/JS).
+        - MVT Flow Diagram: Goal: Illustrate core data flow. Method: HTML/CSS boxes with subtle borders and text-based arrows. Interaction: Clicking a component displays its description (expands on previous version). Justification: Visualizes abstract concepts and reinforces understanding. Library: None (HTML/CSS/JS).
+        - Model Field/Relationship Explanations: Goal: Detail specific field types and relationships. Method: Accordion sections. Interaction: Click to expand/collapse. Justification: Manages information density, allows focused learning. Library: None (HTML/JS).
+        - Code Snippets: Goal: Provide practical examples. Method: <pre><code> blocks with copy buttons and an "Explain Code" button (Gemini API). Interaction: Click to copy code, click to explain. Justification: Essential for technical learning, adds AI-powered assistance. Library: None (HTML/JS).
+        - Forms Lifecycle: Goal: Explain form processing steps. Method: Accordion or numbered list with expandable details. Interaction: Click to expand. Justification: Breaks down a complex process into digestible steps. Library: None (HTML/JS).
+        - Concept Simplification: Goal: Provide easier-to-understand explanations for complex topics using LLM. Method: Button at section start, displays explanation in a modal. Interaction: Click to simplify. Justification: Enhances accessibility for learners of all levels. Library: None (HTML/JS).
+        - Confirmation: NO SVG graphics used. NO Mermaid JS used.
+     -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .active-nav {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+            font-weight: 600;
+        }
+        .nav-link {
+            transition: all 0.2s ease-in-out;
+        }
+        .content-section {
+            display: none;
+            min-height: calc(100vh - 8rem); /* Adjust for header/footer if present */
+            padding-bottom: 4rem; /* Ensure space at the bottom for content */
+        }
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .code-block {
+            position: relative;
+        }
+        .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #4b5563; /* gray-700 */
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .code-block:hover .copy-button {
+            opacity: 1;
+        }
+        .explain-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 4.5rem; /* Adjusted to make space for copy button */
+            background-color: #8B5CF6; /* purple-500 */
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .code-block:hover .explain-button {
+            opacity: 1;
+        }
+        .accordion-header {
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .accordion-header:hover {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .mvt-diagram .mvt-box {
+            border: 2px solid #e5e7eb; /* gray-200 */
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .mvt-diagram .mvt-box:hover, .mvt-diagram .mvt-box.active {
+            border-color: #4f46e5; /* indigo-600 */
+            box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        .mvt-arrow {
+            position: relative;
+            color: #6b7280; /* gray-500 */
+            font-size: 1.25rem; /* For the arrow symbol */
+        }
+        .mvt-arrow::after {
+            content: '►'; /* Right-pointing triangle */
+            position: absolute;
+            font-size: 1.25rem;
+        }
+        /* Specific arrows for diagram */
+        .arrow-down::after { transform: rotate(90deg); left: 50%; top: -10px; margin-left: -0.625rem; }
+        .arrow-right::after { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+        .arrow-up::after { transform: rotate(-90deg); left: 50%; bottom: -10px; margin-left: -0.625rem; }
+        .arrow-left::after { transform: rotate(180deg); right: -2px; top: 50%; margin-top: -0.625rem; }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .modal-close-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b; /* slate-500 */
+        }
+        .modal-close-button:hover {
+            color: #334155; /* slate-700 */
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4f46e5; /* indigo-600 */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="flex min-h-screen bg-slate-100">
+        <!-- Sidebar Navigation (Desktop) -->
+        <aside id="sidebar" class="w-64 bg-white shadow-lg p-4 flex-shrink-0 hidden md:flex flex-col justify-between overflow-y-auto">
+            <div>
+                <h1 class="text-2xl font-bold text-indigo-600 mb-8 px-2">Django Deep Dive</h1>
+                <nav id="desktop-nav" class="flex flex-col space-y-2">
+                    <a href="#pendahuluan" class="nav-link px-3 py-2 rounded-md">Pendahuluan</a>
+                    <a href="#mvt-flow" class="nav-link px-3 py-2 rounded-md">Alur MVT</a>
+                    <a href="#models-intro" class="nav-link px-3 py-2 rounded-md">Models: Definisi & Field</a>
+                    <a href="#models-relations" class="nav-link px-3 py-2 rounded-md">Models: Hubungan & Query</a>
+                    <a href="#views-types" class="nav-link px-3 py-2 rounded-md">Views: Fungsi & Kelas</a>
+                    <a href="#urls-advanced" class="nav-link px-3 py-2 rounded-md">URLs: Pemetaan Lanjut</a>
+                    <a href="#templates-features" class="nav-link px-3 py-2 rounded-md">Templates: Pewarisan & Tag</a>
+                    <a href="#static-files" class="nav-link px-3 py-2 rounded-md">Static Files</a>
+                    <a href="#forms-basic" class="nav-link px-3 py-2 rounded-md">Forms Dasar</a>
+                    <a href="#admin-customize" class="nav-link px-3 py-2 rounded-md">Situs Admin Kustomisasi</a>
+                    <a href="#auth-basic" class="nav-link px-3 py-2 rounded-md">Otentikasi Dasar</a>
+                </nav>
+            </div>
+            <div class="text-xs text-slate-400 text-center mt-8">
+                <p>&copy; 2025. Belajar Django.</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header (Mobile) -->
+            <header class="bg-white shadow-md md:hidden flex justify-between items-center p-4 sticky top-0 z-10">
+                <h1 class="text-xl font-bold text-indigo-600">Django Deep Dive</h1>
+                <button id="mobile-menu-button" class="p-2 rounded-md text-slate-700 hover:bg-slate-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </header>
+
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden transform -translate-x-full transition-transform duration-300">
+                <div class="bg-white w-64 h-full shadow-xl p-4 flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-8">
+                        <h1 class="text-2xl font-bold text-indigo-600">Menu</h1>
+                         <button id="close-mobile-menu" class="p-2 rounded-md text-slate-700 hover:bg-slate-100">&times;</button>
+                    </div>
+                    <nav id="mobile-nav" class="flex flex-col space-y-2 flex-grow overflow-y-auto">
+                        <a href="#pendahuluan" class="nav-link px-3 py-2 rounded-md">Pendahuluan</a>
+                        <a href="#mvt-flow" class="nav-link px-3 py-2 rounded-md">Alur MVT</a>
+                        <a href="#models-intro" class="nav-link px-3 py-2 rounded-md">Models: Definisi & Field</a>
+                        <a href="#models-relations" class="nav-link px-3 py-2 rounded-md">Models: Hubungan & Query</a>
+                        <a href="#views-types" class="nav-link px-3 py-2 rounded-md">Views: Fungsi & Kelas</a>
+                        <a href="#urls-advanced" class="nav-link px-3 py-2 rounded-md">URLs: Pemetaan Lanjut</a>
+                        <a href="#templates-features" class="nav-link px-3 py-2 rounded-md">Templates: Pewarisan & Tag</a>
+                        <a href="#static-files" class="nav-link px-3 py-2 rounded-md">Static Files</a>
+                        <a href="#forms-basic" class="nav-link px-3 py-2 rounded-md">Forms Dasar</a>
+                        <a href="#admin-customize" class="nav-link px-3 py-2 rounded-md">Situs Admin Kustomisasi</a>
+                        <a href="#auth-basic" class="nav-link px-3 py-2 rounded-md">Otentikasi Dasar</a>
+                    </nav>
+                    <div class="text-xs text-slate-400 text-center mt-8">
+                        <p>&copy; 2025. Belajar Django.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Container -->
+            <div class="flex-1 p-6 lg:p-10 overflow-y-auto">
+
+                <!-- Section: Pendahuluan -->
+                <section id="pendahuluan" class="content-section active">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">Pendahuluan Django Lebih Dalam</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-6">
+                        Selamat datang di modul pembelajaran Django yang lebih mendalam! Di sini, kita akan mengeksplorasi konsep-konsep inti Django, mulai dari definisi model hingga otentikasi dasar. Setiap bagian dirancang untuk memberikan pemahaman yang komprehensif, dengan fokus pada praktik terbaik dan implementasi nyata.
+                    </p>
+                    <div class="prose max-w-none prose-indigo">
+                        <p>Django adalah *framework* web Python yang kuat yang memungkinkan Anda membangun aplikasi web yang kompleks dan skalabel dengan cepat. Kami akan menguraikan komponen-komponennya dan menunjukkan bagaimana mereka bekerja sama.</p>
+                        <h3 class="text-2xl font-bold mt-8 mb-4">Lingkup Pembelajaran</h3>
+                        <p>Pembelajaran ini akan mencakup:</p>
+                        <ul class="list-disc list-inside space-y-2 text-slate-700">
+                            <li>Memahami alur kerja Model-View-Template (MVT) secara detail.</li>
+                            <li>Definisi model, jenis field, dan hubungan antar model.</li>
+                            <li>Penggunaan QuerySet API untuk berinteraksi dengan database.</li>
+                            <li>Perbedaan dan penggunaan Function-Based Views (FBV) dan Class-Based Views (CBV).</li>
+                            <li>Pemetaan URL lanjutan, termasuk namespace.</li>
+                            <li>Fitur-fitur template seperti pewarisan, tag, dan filter.</li>
+                            <li>Pengelolaan file statis.</li>
+                            <li>Dasar-dasar Django Forms untuk penanganan input pengguna.</li>
+                            <li>Kustomisasi situs admin Django.</li>
+                            <li>Konsep dasar otentikasi dan otorisasi.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Section: Alur MVT (Enhanced) -->
+                <section id="mvt-flow" class="content-section">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">Alur Kerja Model-View-Template (MVT)</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-8">
+                        Pola MVT adalah jantung arsitektur Django. Diagram interaktif di bawah ini menggambarkan bagaimana permintaan web mengalir melalui komponen-komponen ini untuk menghasilkan respons. Klik setiap komponen untuk melihat peran spesifiknya.
+                    </p>
+                    <div class="mvt-diagram bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
+                        <!-- User Request -->
+                        <div id="mvt-user" data-desc-target="desc-mvt-user" class="mvt-box p-4 rounded-lg w-48 text-center bg-blue-50">Browser Pengguna</div>
+                        <div class="mvt-arrow arrow-down h-12 relative w-0.5 bg-slate-400 my-2"></div>
+
+                        <!-- URL Dispatcher -->
+                        <div id="mvt-url" data-desc-target="desc-mvt-url" class="mvt-box p-4 rounded-lg w-48 text-center bg-indigo-100">URL Dispatcher</div>
+                        <div class="mvt-arrow arrow-down h-12 relative w-0.5 bg-slate-400 my-2"></div>
+
+                        <!-- View -->
+                        <div id="mvt-view" data-desc-target="desc-mvt-view" class="mvt-box p-4 rounded-lg w-48 text-center bg-purple-100">View</div>
+                        
+                        <div class="flex justify-between w-full max-w-lg mt-4">
+                            <div class="flex-1 flex justify-center items-center relative">
+                                <div class="mvt-arrow arrow-left h-0.5 w-full bg-slate-400 relative"></div>
+                                <div class="mvt-arrow arrow-up h-12 relative w-0.5 bg-slate-400 transform rotate-45 mr-1"></div>
+                            </div>
+                            <div class="flex-1 flex justify-center items-center relative">
+                                <div class="mvt-arrow arrow-right h-0.5 w-full bg-slate-400 relative"></div>
+                                <div class="mvt-arrow arrow-up h-12 relative w-0.5 bg-slate-400 transform -rotate-45 ml-1"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-6 w-full max-w-lg mt-[-1rem]">
+                            <!-- Model -->
+                            <div id="mvt-model" data-desc-target="desc-mvt-model" class="mvt-box p-4 rounded-lg text-center bg-green-100">Model</div>
+                            <!-- Template -->
+                            <div id="mvt-template" data-desc-target="desc-mvt-template" class="mvt-box p-4 rounded-lg text-center bg-yellow-100">Template</div>
+                        </div>
+
+                        <div class="flex flex-col items-center mt-4">
+                            <div class="mvt-arrow arrow-up h-12 relative w-0.5 bg-slate-400 my-2 transform rotate-90"></div>
+                            <div id="mvt-db" data-desc-target="desc-mvt-db" class="mvt-box p-4 rounded-lg w-48 text-center bg-red-100">Database</div>
+                        </div>
+                        
+                        <!-- MVT Descriptions -->
+                        <div class="mt-8 p-4 bg-slate-50 rounded-lg w-full min-h-[120px] prose max-w-none prose-indigo">
+                            <div id="desc-mvt-default" class="mvt-desc"><p>Klik salah satu kotak di atas untuk melihat penjelasan detail tentang perannya dalam alur MVT.</p></div>
+                            <div id="desc-mvt-user" class="mvt-desc hidden"><p><strong>Browser Pengguna (Request):</strong> Inilah titik awal! Pengguna mengirimkan permintaan (misalnya, mengetik URL, mengklik tautan) ke server web Django Anda.</p></div>
+                            <div id="desc-mvt-url" class="mvt-desc hidden"><p><strong>URL Dispatcher (<code>urls.py</code>):</strong> Django menerima permintaan dan mencocokkan URL dengan pola yang Anda definisikan. Jika cocok, ia meneruskan permintaan ke <em>view</em> yang sesuai.</p></div>
+                            <div id="desc-mvt-view" class="mvt-desc hidden"><p><strong>View (<code>views.py</code>):</strong> Ini adalah fungsi atau kelas Python yang menerima permintaan, berisi logika bisnis. Ia dapat berinteraksi dengan <em>Model</em> (untuk data) dan/atau <em>Template</em> (untuk presentasi) sebelum mengembalikan respons.</p></div>
+                            <div id="desc-mvt-model" class="mvt-desc hidden"><p><strong>Model (<code>models.py</code>):</strong> Ini adalah representasi data Anda. Kelas Python yang mendefinisikan struktur database Anda. <em>View</em> menggunakan <em>Model</em> untuk mengambil, menyimpan, dan memanipulasi data melalui ORM Django.</p></div>
+                            <div id="desc-mvt-template" class="mvt-desc hidden"><p><strong>Template (<code>.html</code>):</strong> Ini adalah file HTML dengan sintaks khusus Django. Template bertanggung jawab untuk merender data yang diterima dari <em>View</em> menjadi HTML akhir yang dikirim kembali ke pengguna.</p></div>
+                            <div id="desc-mvt-db" class="mvt-desc hidden"><p><strong>Database:</strong> Tempat data disimpan secara persisten. Model Django berkomunikasi dengan database menggunakan ORM (Object-Relational Mapper) sehingga Anda tidak perlu menulis SQL.</p></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Models - Definisi & Field -->
+                <section id="models-intro" class="content-section">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">Models: Definisi & Tipe Field</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-8">
+                        Models adalah inti dari setiap aplikasi Django, mendefinisikan struktur data Anda dan menyediakan antarmuka untuk berinteraksi dengan database. Pelajari cara mendefinisikan model dan berbagai tipe field yang tersedia.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Definisi Model Dasar</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Model Django adalah kelas Python yang mewarisi dari <code>django.db.models.Model</code>. Setiap atribut kelas ini menjadi kolom (field) di tabel database.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># blog/models.py
+from django.db import models
+
+class Post(models.Model):
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    pub_date = models.DateTimeField(auto_now_add=True)
+    is_published = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        ordering = ['-pub_date']
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                                <p><code>__str__</code> adalah metode penting yang menentukan representasi string dari objek model, sangat berguna di situs admin Django. <code>Meta</code> class digunakan untuk memberikan opsi-opsi pada model, seperti urutan default.</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Tipe Field Umum</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Django menyediakan berbagai tipe field untuk merepresentasikan berbagai jenis data:</p>
+                                <ul class="list-disc list-inside space-y-2">
+                                    <li><code>CharField(max_length=...)</code>: Untuk string pendek hingga menengah.</li>
+                                    <li><code>TextField()</code>: Untuk teks panjang.</li>
+                                    <li><code>IntegerField()</code>: Untuk bilangan bulat.</li>
+                                    <li><code>BooleanField(default=...)</code>: Untuk nilai true/false.</li>
+                                    <li><code>DateTimeField(auto_now_add=True/auto_now=True)</code>: Untuk tanggal dan waktu.</li>
+                                    <li><code>DateField()</code>: Untuk tanggal saja.</li>
+                                    <li><code>EmailField()</code>: Untuk alamat email.</li>
+                                    <li><code>URLField()</code>: Untuk URL.</li>
+                                    <li><code>DecimalField(max_digits=..., decimal_places=...)</code>: Untuk angka desimal presisi tinggi.</li>
+                                    <li><code>ImageField(upload_to=...)</code>: Untuk menyimpan jalur file gambar.</li>
+                                    <li><code>FileField(upload_to=...)</code>: Untuk menyimpan jalur file umum.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Models - Hubungan & Query -->
+                <section id="models-relations" class="content-section">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">Models: Hubungan & QuerySet API</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-8">
+                        Hubungan antar model adalah fundamental dalam database relasional. Django ORM (Object-Relational Mapper) membuat interaksi dengan database menjadi intuitif menggunakan Python murni melalui QuerySet API.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Hubungan Antar Model</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Django mendukung tiga jenis hubungan database:</p>
+                                <ul class="list-disc list-inside space-y-2">
+                                    <li><strong>One-to-Many (ForeignKey):</strong> Satu record di satu tabel dapat dihubungkan dengan banyak record di tabel lain. Contoh: Satu Penulis memiliki banyak Post.</li>
+                                    <div class="code-block mt-4">
+                                        <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code>from django.db import models
+
+class Author(models.Model):
+    name = models.CharField(max_length=100)
+
+class Post(models.Model):
+    title = models.CharField(max_length=200)
+    author = models.ForeignKey(Author, on_delete=models.CASCADE) # One-to-Many
+</code></pre>
+                                        <button class="copy-button">Salin</button>
+                                        <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                    </div>
+                                    <li><strong>Many-to-Many (ManyToManyField):</strong> Banyak record di satu tabel dapat dihubungkan dengan banyak record di tabel lain. Contoh: Satu Post memiliki banyak Tag, satu Tag memiliki banyak Post.</li>
+                                    <div class="code-block mt-4">
+                                        <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code>from django.db import models
+
+class Tag(models.Model):
+    name = models.CharField(max_length=50)
+
+class Post(models.Model):
+    # ... other fields
+    tags = models.ManyToManyField(Tag) # Many-to-Many
+</code></pre>
+                                        <button class="copy-button">Salin</button>
+                                        <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                    </div>
+                                    <li><strong>One-to-One (OneToOneField):</strong> Satu record di satu tabel hanya dapat dihubungkan dengan satu record di tabel lain. Contoh: Satu Pengguna memiliki satu Profil Pengguna.</li>
+                                    <div class="code-block mt-4">
+                                        <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code>from django.db import models
+from django.contrib.auth.models import User
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    bio = models.TextField(blank=True)
+</code></pre>
+                                        <button class="copy-button">Salin</button>
+                                        <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                    </div>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>QuerySet API: Mengambil Data</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>QuerySet API adalah cara Anda berinteraksi dengan database menggunakan model Django:</p>
+                                <ul class="list-disc list-inside space-y-2">
+                                    <li><code>Model.objects.all()</code>: Mengambil semua objek.</li>
+                                    <li><code>Model.objects.get(id=1)</code>: Mengambil satu objek berdasarkan kriteria. Akan memunculkan error jika tidak ditemukan atau ditemukan lebih dari satu.</li>
+                                    <li><code>Model.objects.filter(field='value')</code>: Mengambil QuerySet yang cocok dengan kriteria.</li>
+                                    <li><code>Model.objects.exclude(field='value')</code>: Mengambil QuerySet yang tidak cocok dengan kriteria.</li>
+                                    <li><code>QuerySet.order_by('field')</code>: Mengurutkan hasil.</li>
+                                    <li><code>QuerySet.count()</code>: Menghitung jumlah objek.</li>
+                                    <li><code>QuerySet.first()</code> / <code>QuerySet.last()</code>: Mengambil objek pertama/terakhir.</li>
+                                </ul>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># Contoh penggunaan di Django shell atau view
+from blog.models import Post, Author
+
+# Membuat data
+author = Author.objects.create(name='John Doe')
+Post.objects.create(title='Django Basics', author=author, content='Content here.')
+Post.objects.create(title='Advanced Django', author=author, content='More content.', is_published=True)
+
+# Mengambil semua post
+all_posts = Post.objects.all()
+
+# Mengambil post yang diterbitkan
+published_posts = Post.objects.filter(is_published=True)
+
+# Mengambil post berdasarkan ID
+post_by_id = Post.objects.get(id=1)
+
+# Mengambil post dari penulis tertentu
+john_posts = Post.objects.filter(author__name='John Doe')
+
+# Mengambil post dan mengurutkan
+ordered_posts = Post.objects.order_by('-pub_date')
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>QuerySet API: Membuat, Memperbarui, Menghapus</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <ul class="list-disc list-inside space-y-2">
+                                    <li><strong>Membuat:</strong>
+                                        <div class="code-block mt-4">
+                                            <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># Cara 1: Menggunakan create()
+post = Post.objects.create(title="Judul Baru", content="Isi tulisan.")
+
+# Cara 2: Membuat objek dan menyimpan
+new_post = Post(title="Judul Lain", content="Isi lainnya.")
+new_post.save()
+</code></pre>
+                                            <button class="copy-button">Salin</button>
+                                            <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                        </div>
+                                    </li>
+                                    <li><strong>Memperbarui:</strong>
+                                        <div class="code-block mt-4">
+                                            <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># Memperbarui satu objek
+post = Post.objects.get(id=1)
+post.title = "Judul Diperbarui"
+post.save()
+
+# Memperbarui banyak objek sekaligus
+Post.objects.filter(is_published=False).update(is_published=True)
+</code></pre>
+                                            <button class="copy-button">Salin</button>
+                                            <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                        </div>
+                                    </li>
+                                    <li><strong>Menghapus:</strong>
+                                        <div class="code-block mt-4">
+                                            <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># Menghapus satu objek
+post = Post.objects.get(id=1)
+post.delete()
+
+# Menghapus banyak objek
+Post.objects.filter(pub_date__year=2023).delete()
+</code></pre>
+                                            <button class="copy-button">Salin</button>
+                                            <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Migrasi Database</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Migrasi adalah cara Django menyebarkan perubahan yang Anda buat pada model (menambahkan field, menghapus model, dll.) ke skema database Anda.</p>
+                                <ul class="list-disc list-inside space-y-2">
+                                    <li><code>python manage.py makemigrations [app_name]</code>: Membuat file migrasi baru berdasarkan perubahan pada model Anda.</li>
+                                    <li><code>python manage.py migrate</code>: Menerapkan migrasi yang belum diterapkan ke database.</li>
+                                    <li><code>python manage.py showmigrations [app_name]</code>: Menampilkan daftar semua migrasi dan statusnya.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Views - Fungsi & Kelas -->
+                <section id="views-types" class="content-section">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">Views: Function-Based (FBV) vs. Class-Based (CBV)</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-8">
+                        Views adalah "otak" aplikasi Django Anda, bertanggung jawab untuk memproses permintaan web dan mengembalikan respons. Ada dua cara utama untuk menulis views: sebagai fungsi Python (FBV) atau sebagai kelas Python (CBV).
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Function-Based Views (FBV)</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>FBV adalah fungsi Python sederhana yang menerima objek <code>HttpRequest</code> dan mengembalikan objek <code>HttpResponse</code>. Mereka mudah dipahami dan cepat untuk ditulis.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># blog/views.py (FBV Contoh)
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Post
+
+def post_list(request):
+    posts = Post.objects.all().order_by('-pub_date')
+    return render(request, 'blog/post_list.html', {'posts': posts})
+
+def post_detail(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    return render(request, 'blog/post_detail.html', {'post': post})
+
+def add_post(request):
+    if request.method == 'POST':
+        # Proses form data
+        pass
+    return render(request, 'blog/add_post.html')
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Class-Based Views (CBV)</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>CBV adalah kelas Python yang mewarisi dari kelas dasar generic view Django. Mereka menyediakan struktur yang lebih terorganisir untuk kode yang dapat digunakan kembali dan memungkinkan modularitas yang lebih baik. Cocok untuk operasi CRUD (Create, Retrieve, Update, Delete) umum.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># blog/views.py (CBV Contoh)
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from .models import Post
+from django.urls import reverse_lazy
+
+class PostListView(ListView):
+    model = Post
+    template_name = 'blog/post_list.html'
+    context_object_name = 'posts'
+    ordering = ['-pub_date']
+
+class PostDetailView(DetailView):
+    model = Post
+    template_name = 'blog/post_detail.html'
+    context_object_name = 'post'
+
+class PostCreateView(CreateView):
+    model = Post
+    template_name = 'blog/add_post.html'
+    fields = ['title', 'content', 'author', 'is_published']
+    success_url = reverse_lazy('blog:list')
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Objek HttpRequest & HttpResponse</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Setiap *view* menerima objek <code>HttpRequest</code> dan harus mengembalikan objek <code>HttpResponse</code>.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># Contoh sederhana
+from django.http import HttpResponse
+
+def simple_view(request):
+    if request.method == 'GET':
+        return HttpResponse("Ini adalah respons GET.")
+    elif request.method == 'POST':
+        return HttpResponse("Ini adalah respons POST.")
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: URLs - Pemetaan Lanjut -->
+                <section id="urls-advanced" class="content-section">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">URLs: Pemetaan Lanjutan</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-8">
+                        URL dispatcher Django adalah komponen kunci yang merutekan permintaan masuk ke views yang benar. Pelajari cara menggunakan pemetaan URL yang lebih canggih, termasuk parameter dinamis dan namespace.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Penggunaan <code>path()</code> Lanjutan</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Fungsi <code>path()</code> menerima beberapa argumen untuk fleksibilitas:</p>
+                                <ul class="list-disc list-inside space-y-2">
+                                    <li><strong><code>route</code>:</strong> String yang berisi pola URL.</li>
+                                    <li><strong><code>view</code>:</strong> Fungsi atau kelas view yang akan dipanggil.</li>
+                                    <li><strong><code>kwargs</code>:</strong> (Opsional) Kamus argumen kata kunci yang akan diteruskan ke view.</li>
+                                    <li><strong><code>name</code>:</strong> (Opsional) Nama untuk pola URL, digunakan untuk referensi terprogram (misalnya, <code>{% url %}</code> di template, <code>reverse()</code> di Python).</li>
+                                </ul>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># blog/urls.py
+from django.urls import path
+from . import views
+
+app_name = 'blog'
+urlpatterns = [
+    path('', views.PostListView.as_view(), name='list'),
+    path('post/&lt;int:pk&gt;/', views.PostDetailView.as_view(), name='detail'),
+    path('post/new/', views.PostCreateView.as_view(), name='create'),
+    path('about/', views.about_page, {'template_name': 'about.html'}, name='about'), # Dengan kwargs
+]
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Regex dengan <code>re_path()</code></span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Untuk pola URL yang lebih kompleks yang memerlukan ekspresi reguler (regex), gunakan <code>re_path()</code>. Ini dulunya adalah cara utama pemetaan URL sebelum <code>path()</code> diperkenalkan.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># blog/urls.py (menggunakan re_path)
+from django.urls import re_path
+from . import views
+
+urlpatterns = [
+    re_path(r'^articles/(?P&lt;year&gt;[0-9]{4})/$', views.year_archive),
+]
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>URL Namespaces</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Namespace mencegah konflik nama URL antar aplikasi. Anda bisa memiliki <code>detail</code> URL di aplikasi `blog` dan `portfolio` tanpa kebingungan.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># myproject/urls.py
+from django.urls import path, include
+
+urlpatterns = [
+    path('blog/', include('blog.urls', namespace='blog')),
+    path('portfolio/', include('portfolio.urls', namespace='portfolio')),
+]
+
+# Di template atau Python:
+# {% url 'blog:detail' post.id %}
+# {% url 'portfolio:project_detail' project.id %}
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Templates - Pewarisan & Tag -->
+                <section id="templates-features" class="content-section">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">Templates: Pewarisan & Fitur Lanjutan</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-8">
+                        Django Template Language (DTL) adalah bahasa template sederhana yang berfokus pada pemisahan logika dari presentasi. Pelajari bagaimana pewarisan template dan berbagai tag/filter meningkatkan efisiensi pengembangan.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Pewarisan Template (Inheritance)</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Pewarisan template memungkinkan Anda untuk membuat layout dasar sekali dan menggunakannya kembali di seluruh situs Anda, mengurangi duplikasi kode. Gunakan tag <code>{% extends %}</code> dan <code>{% block %}</code>.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code>&lt;!-- templates/base.html --&gt;
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;{% block title %}Situs Saya{% endblock %}&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="content"&gt;
+        {% block content %}&lt;/div&gt;
+    {% endblock %}
+&lt;/body&gt;
+&lt;/html&gt;
+
+&lt;!-- blog/templates/blog/post_list.html --&gt;
+{% extends 'base.html' %}
+
+{% block title %}Daftar Post Blog{% endblock %}
+
+{% block content %}
+    &lt;h1&gt;Semua Post&lt;/h1&gt;
+    &lt;ul&gt;
+        {% for post in posts %}
+            &lt;li&gt;{{ post.title }}&lt;/li&gt;
+        {% endfor %}
+    &lt;/ul&gt;
+{% endblock %}
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Template Tags & Filters Umum</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p><strong>Tags (<code>{% ... %}</code>):</strong> Melakukan logika seperti perulangan, kondisi, memuat file statis.</p>
+                                <ul class="list-disc list-inside space-y-2">
+                                    <li><code>{% for item in list %} ... {% endfor %}</code></li>
+                                    <li><code>{% if condition %} ... {% else %} ... {% endif %}</code></li>
+                                    <li><code>{% load static %}</code>: Memuat tag untuk file statis.</li>
+                                    <li><code>{% csrf_token %}</code>: Penting untuk keamanan form POST.</li>
+                                    <li><code>{% url 'app_name:url_name' arg1 arg2 %}</code>: Membuat URL.</li>
+                                </ul>
+                                <p><strong>Filters (<code>{{ value|filter_name:argument }}</code>):</strong> Memodifikasi output variabel.</p>
+                                <ul class="list-disc list-inside space-y-2">
+                                    <li><code>{{ value|date:"Y-m-d" }}</code>: Memformat tanggal.</li>
+                                    <li><code>{{ value|length }}</code>: Mengembalikan panjang string/list.</li>
+                                    <li><code>{{ value|lower }}</code> / <code>{{ value|upper }}</code>: Mengubah kasus teks.</li>
+                                    <li><code>{{ value|truncatewords:num }}</code>: Memotong teks setelah sejumlah kata.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Static Files -->
+                <section id="static-files" class="content-section">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">Static Files (CSS, JS, Images)</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-8">
+                        Django menyediakan cara terorganisir untuk mengelola file statis seperti CSS, JavaScript, dan gambar. Pelajari cara mengaturnya untuk pengembangan dan *deployment*.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Konfigurasi Dasar</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Dalam <code>settings.py</code> Anda:</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># myproject/settings.py
+import os
+
+STATIC_URL = '/static/'
+
+# Direktori tempat Django akan mencari file statis di luar app Anda
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+
+# Direktori tempat file statis akan dikumpulkan untuk deployment
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                                <p>Pastikan Anda memiliki folder <code>static</code> di root project Anda, dan di dalam setiap app Anda.</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Menggunakan Static Files di Template</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Untuk menggunakan file statis di template Anda, pertama-tama muat tag static, lalu gunakan tag <code>{% static %}</code>.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code>&lt;!-- templates/base.html atau app_template.html --&gt;
+{% load static %}
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;link rel="stylesheet" href="{% static 'css/style.css' %}"&gt;
+    &lt;script src="{% static 'js/main.js' %}"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;img src="{% static 'images/logo.png' %}" alt="Logo"&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Mengumpulkan Static Files untuk Deployment</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Saat *deployment*, Anda perlu mengumpulkan semua file statis dari berbagai lokasi (aplikasi, <code>STATICFILES_DIRS</code>) ke satu direktori yang ditentukan oleh <code>STATIC_ROOT</code>. Server web kemudian akan menyajikan file-file ini.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code>python manage.py collectstatic
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Forms Dasar -->
+                <section id="forms-basic" class="content-section">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">Forms Dasar</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-8">
+                        Django Forms menyederhanakan proses penanganan input pengguna, dari validasi hingga rendering. Pelajari dasar-dasar membuat dan memproses form di aplikasi Django Anda.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Membuat Form</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Definisikan form Anda dalam file <code>forms.py</code>:</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># blog/forms.py
+from django import forms
+
+class PostForm(forms.Form):
+    title = forms.CharField(max_length=200, label="Judul Post")
+    content = forms.CharField(widget=forms.Textarea, label="Konten")
+    is_published = forms.BooleanField(required=False, label="Terbitkan?")
+
+# Anda juga bisa menggunakan ModelForm untuk membuat form dari model:
+# from django.forms import ModelForm
+# from .models import Post
+
+# class PostModelForm(ModelForm):
+#     class Meta:
+#         model = Post
+#         fields = ['title', 'content', 'is_published']
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Menangani Form di View</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Proses pengiriman form biasanya melibatkan memeriksa metode permintaan, memvalidasi data, dan menyimpannya.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># blog/views.py
+from django.shortcuts import render, redirect
+from .forms import PostForm
+from .models import Post # Jika menggunakan ModelForm
+
+def create_post(request):
+    if request.method == 'POST':
+        form = PostForm(request.POST) # PostForm(request.POST) untuk ModelForm
+        if form.is_valid():
+            # Jika menggunakan forms.Form
+            title = form.cleaned_data['title']
+            content = form.cleaned_data['content']
+            is_published = form.cleaned_data['is_published']
+            Post.objects.create(title=title, content=content, is_published=is_published)
+            
+            # Jika menggunakan ModelForm:
+            # form.save() 
+            return redirect('blog:list')
+    else:
+        form = PostForm() # Instansiasi form kosong untuk permintaan GET
+    return render(request, 'blog/post_form.html', {'form': form})
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Rendering Form di Template</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Render form di template HTML Anda dengan mudah:</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code>&lt;!-- blog/templates/blog/post_form.html --&gt;
+&lt;h1&gt;Buat Post Baru&lt;/h1&gt;
+&lt;form method="post"&gt;
+    {% csrf_token %}
+    {{ form.as_p }} &lt;!-- Render form sebagai paragraf --&gt;
+    &lt;button type="submit"&gt;Kirim&lt;/button&gt;
+&lt;/form&gt;
+
+&lt;!-- Anda juga bisa merender field satu per satu: --&gt;
+&lt;!--
+&lt;form method="post"&gt;
+    {% csrf_token %}
+    &lt;label for="{{ form.title.id_for_label }}"&gt;{{ form.title.label }}&lt;/label&gt;
+    {{ form.title }}
+    {% if form.title.errors %}&lt;ul&gt;{% for error in form.title.errors %}&lt;li&gt;{{ error }}&lt;/li&gt;{% endfor %}&lt;/ul&gt;{% endif %}
+    ...
+&lt;/form&gt;
+--&gt;
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Admin Site Kustomisasi -->
+                <section id="admin-customize" class="content-section">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">Situs Admin Kustomisasi</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-8">
+                        Situs admin Django adalah fitur yang sangat kuat untuk mengelola data Anda. Pelajari cara menyesuaikannya agar lebih ramah pengguna dan sesuai dengan kebutuhan Anda.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Mendaftarkan Model</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Untuk membuat model Anda tersedia di situs admin, daftarkan di <code>admin.py</code> app Anda.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># blog/admin.py
+from django.contrib import admin
+from .models import Post
+
+admin.site.register(Post)
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Menggunakan <code>ModelAdmin</code></span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Untuk kustomisasi lebih lanjut, buat kelas <code>ModelAdmin</code> dan daftarkan model Anda dengannya.</p>
+                                <ul class="list-disc list-inside space-y-2">
+                                    <li><code>list_display</code>: Field yang akan ditampilkan di daftar objek.</li>
+                                    <li><code>list_filter</code>: Field yang dapat difilter di sidebar.</li>
+                                    <li><code>search_fields</code>: Field yang dapat dicari.</li>
+                                    <li><code>list_per_page</code>: Jumlah item per halaman.</li>
+                                    <li><code>fieldsets</code>: Mengatur field ke dalam grup visual.</li>
+                                </ul>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># blog/admin.py
+from django.contrib import admin
+from .models import Post, Author
+
+class PostAdmin(admin.ModelAdmin):
+    list_display = ('title', 'author', 'pub_date', 'is_published')
+    list_filter = ('is_published', 'pub_date', 'author')
+    search_fields = ('title', 'content')
+    date_hierarchy = 'pub_date'
+    ordering = ('-pub_date',)
+    
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'content')
+        }),
+        ('Informasi Publikasi', {
+            'fields': ('author', 'pub_date', 'is_published'),
+            'classes': ('collapse',) # Buat bagian ini bisa dilipat
+        }),
+    )
+
+admin.site.register(Post, PostAdmin)
+admin.site.register(Author)
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Otentikasi Dasar -->
+                <section id="auth-basic" class="content-section">
+                    <h2 class="text-4xl font-extrabold mb-4 text-slate-900">Otentikasi Dasar</h2>
+                    <button class="simplify-concept-button bg-green-500 text-white text-sm px-3 py-1 rounded-md mb-4 hover:bg-green-600 transition duration-300">Sederhanakan Konsep Ini ✨</button>
+                    <p class="text-lg text-slate-600 mb-8">
+                        Django hadir dengan sistem otentikasi dan otorisasi yang tangguh. Pelajari cara menggunakan model pengguna, melindungi views, dan memeriksa status otentikasi.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Menggunakan Model User</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Model <code>User</code> bawaan Django dapat diakses melalui <code>django.contrib.auth.models.User</code>. Anda dapat menggunakannya seperti model lainnya.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code>from django.contrib.auth.models import User
+
+# Membuat user baru
+user = User.objects.create_user('john_doe', 'john@example.com', 'password123')
+
+# Mencari user
+try:
+    user = User.objects.get(username='john_doe')
+except User.DoesNotExist:
+    print("User tidak ditemukan.")
+
+# Mengecek properti user di view/template
+# request.user.is_authenticated
+# request.user.is_staff
+# request.user.is_superuser
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="accordion-header p-4 flex justify-between items-center text-indigo-700 font-semibold">
+                                <span>Melindungi Views dengan Decorator</span>
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </div>
+                            <div class="accordion-content px-4 pb-4 prose max-w-none prose-indigo">
+                                <p>Gunakan decorator <code>@login_required</code> untuk memastikan hanya pengguna yang *login* yang dapat mengakses *view* tertentu.</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># blog/views.py
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+
+@login_required
+def my_secret_page(request):
+    return render(request, 'blog/secret_page.html', {'user': request.user})
+
+# Untuk Class-Based Views, gunakan mixin:
+# from django.contrib.auth.mixins import LoginRequiredMixin
+# from django.views.generic import TemplateView
+
+# class SecretPageView(LoginRequiredMixin, TemplateView):
+#     template_name = 'blog/secret_page.html'
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                                <p>Anda perlu mengkonfigurasi <code>LOGIN_URL</code> di <code>settings.py</code>:</p>
+                                <div class="code-block mt-4">
+                                    <pre class="bg-slate-800 text-white p-4 rounded-md text-sm overflow-x-auto"><code># myproject/settings.py
+LOGIN_URL = '/accounts/login/' # Ganti dengan URL login Anda
+</code></pre>
+                                    <button class="copy-button">Salin</button>
+                                    <button class="explain-code-button bg-purple-500 text-white text-sm px-3 py-1 rounded-md hover:bg-purple-600 transition duration-300">Jelaskan Kode Ini ✨</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- LLM Explanation Modal -->
+    <div id="llm-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <button id="llm-modal-close-button" class="modal-close-button">&times;</button>
+            <h3 id="llm-modal-title" class="text-2xl font-bold text-slate-800 mb-4"></h3>
+            <div id="llm-modal-body" class="prose max-w-none text-slate-700">
+                <div class="loading-spinner"></div>
+                <p class="text-center text-slate-600">Memuat penjelasan...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const closeMobileMenuButton = document.getElementById('close-mobile-menu');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            const sections = document.querySelectorAll('.content-section');
+            const mvtBoxes = document.querySelectorAll('.mvt-diagram .mvt-box');
+            const mvtDescs = document.querySelectorAll('.mvt-desc');
+            const defaultMvtDesc = document.getElementById('desc-mvt-default');
+
+            const llmModalOverlay = document.getElementById('llm-modal-overlay');
+            const llmModalCloseButton = document.getElementById('llm-modal-close-button');
+            const llmModalTitle = document.getElementById('llm-modal-title');
+            const llmModalBody = document.getElementById('llm-modal-body');
+
+            // --- Navigation Logic ---
+            function updateContent(hash) {
+                if (!hash) hash = '#pendahuluan';
+
+                sections.forEach(section => {
+                    if ('#' + section.id === hash) {
+                        section.classList.add('active');
+                        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        section.classList.remove('active');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    if (link.getAttribute('href') === hash) {
+                        link.classList.add('active-nav');
+                    } else {
+                        link.classList.remove('active-nav');
+                    }
+                });
+            }
+
+            function handleNavClick(e) {
+                e.preventDefault();
+                const hash = e.currentTarget.getAttribute('href');
+                window.location.hash = hash;
+                if (mobileMenu.classList.contains('transform') && !mobileMenu.classList.contains('-translate-x-full')) {
+                     mobileMenu.classList.add('-translate-x-full');
+                     setTimeout(() => mobileMenu.classList.add('hidden'), 300); // Hide after transition
+                }
+            }
+
+            navLinks.forEach(link => link.addEventListener('click', handleNavClick));
+            
+            window.addEventListener('hashchange', () => updateContent(window.location.hash));
+            updateContent(window.location.hash || '#pendahuluan'); // Initial load
+
+            // --- Mobile Menu Logic ---
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.remove('hidden');
+                setTimeout(() => mobileMenu.classList.remove('-translate-x-full'), 10); // Start transition
+            });
+            closeMobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.add('-translate-x-full');
+                setTimeout(() => mobileMenu.classList.add('hidden'), 300); // Hide after transition
+            });
+            mobileMenu.addEventListener('click', (e) => {
+                 if(e.target === mobileMenu) { // Clicked on overlay, not the menu content
+                     mobileMenu.classList.add('-translate-x-full');
+                     setTimeout(() => mobileMenu.classList.add('hidden'), 300);
+                 }
+            });
+
+            // --- MVT Diagram Logic ---
+            mvtBoxes.forEach(box => {
+                box.addEventListener('click', () => {
+                    const targetId = box.dataset.descTarget;
+                    
+                    mvtBoxes.forEach(b => b.classList.remove('active'));
+                    box.classList.add('active');
+
+                    mvtDescs.forEach(desc => {
+                        desc.classList.add('hidden');
+                    });
+                    document.getElementById(targetId).classList.remove('hidden');
+                });
+            });
+            if (defaultMvtDesc) {
+                mvtDescs.forEach(desc => desc.classList.add('hidden'));
+                defaultMvtDesc.classList.remove('hidden');
+            }
+
+
+            // --- Accordion Logic ---
+            document.querySelectorAll('.accordion-header').forEach(header => {
+                header.addEventListener('click', () => {
+                    const content = header.nextElementSibling;
+                    const arrow = header.querySelector('span:last-child');
+                    const isOpen = content.style.maxHeight && content.style.maxHeight !== '0px';
+
+                    header.closest('.space-y-4').querySelectorAll('.accordion-content').forEach(otherContent => {
+                        if (otherContent !== content) {
+                            otherContent.style.maxHeight = '0px';
+                            otherContent.previousElementSibling.querySelector('span:last-child').style.transform = 'rotate(0deg)';
+                        }
+                    });
+
+                    if (!isOpen) {
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                        arrow.style.transform = 'rotate(180deg)';
+                    } else {
+                        content.style.maxHeight = '0px';
+                        arrow.style.transform = 'rotate(0deg)';
+                    }
+                });
+            });
+
+            // --- Copy Button Logic ---
+            document.body.addEventListener('click', function(e) {
+                if (e.target.classList.contains('copy-button')) {
+                    const codeElement = e.target.previousElementSibling.querySelector('code');
+                    if (codeElement) {
+                        const code = codeElement.innerText;
+                        navigator.clipboard.writeText(code).then(() => {
+                            e.target.textContent = 'Disalin!';
+                            setTimeout(() => { e.target.textContent = 'Salin'; }, 2000);
+                        }).catch(err => {
+                            console.error('Gagal menyalin teks: ', err);
+                            const textarea = document.createElement('textarea');
+                            textarea.value = code;
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            try {
+                                document.execCommand('copy');
+                                e.target.textContent = 'Disalin!';
+                                setTimeout(() => { e.target.textContent = 'Salin'; }, 2000);
+                            } catch (fallbackErr) {
+                                console.error('Fallback copy failed: ', fallbackErr);
+                            } finally {
+                                document.body.removeChild(textarea);
+                            }
+                        });
+                    }
+                }
+            });
+
+            // --- LLM Integration Logic ---
+
+            function openLlmModal(title, contentHtml) {
+                llmModalTitle.textContent = title;
+                llmModalBody.innerHTML = contentHtml;
+                llmModalOverlay.classList.add('active');
+            }
+
+            function closeLlmModal() {
+                llmModalOverlay.classList.remove('active');
+                // Reset modal content
+                llmModalBody.innerHTML = '<div class="loading-spinner"></div><p class="text-center text-slate-600">Memuat penjelasan...</p>';
+            }
+
+            llmModalCloseButton.addEventListener('click', closeLlmModal);
+            llmModalOverlay.addEventListener('click', (e) => {
+                if (e.target === llmModalOverlay) {
+                    closeLlmModal();
+                }
+            });
+
+            async function callGeminiAPI(prompt) {
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                const payload = { contents: chatHistory };
+                const apiKey = ""
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        // Replace newlines with <br> for HTML display
+                        llmModalBody.innerHTML = text.replace(/\n/g, '<br>');
+                    } else {
+                        llmModalBody.innerHTML = '<p class="text-red-600">Terjadi kesalahan: Tidak ada respons dari AI atau format tidak terduga.</p>';
+                        console.error('Unexpected API response structure:', result);
+                    }
+                } catch (error) {
+                    llmModalBody.innerHTML = `<p class="text-red-600">Terjadi kesalahan saat memuat: ${error.message}</p>`;
+                    console.error('Error calling Gemini API:', error);
+                }
+            }
+
+            // Event listener for "Jelaskan Kode Ini ✨" buttons
+            document.querySelectorAll('.explain-code-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const codeElement = e.target.previousElementSibling.previousElementSibling; // Pre > Code
+                    const codeSnippet = codeElement.innerText;
+                    const prompt = `Jelaskan kode Django (Python/HTML template) berikut secara detail, fokus pada fungsinya, bagian-bagian penting, dan bagaimana itu bekerja dalam konteks Django:\n\n\`\`\`\n${codeSnippet}\n\`\`\``;
+                    
+                    openLlmModal('Penjelasan Kode', '<div class="loading-spinner"></div><p class="text-center text-slate-600">Memuat penjelasan kode...</p>');
+                    callGeminiAPI(prompt);
+                });
+            });
+
+            // Event listener for "Sederhanakan Konsep Ini ✨" buttons
+            document.querySelectorAll('.simplify-concept-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const section = e.target.closest('section');
+                    const sectionTitle = section.querySelector('h2').textContent;
+                    let sectionText = '';
+                    // Get main descriptive paragraphs for the section
+                    section.querySelectorAll('p').forEach(p => {
+                        // Avoid getting content from code blocks or accordions if they are present directly under section
+                        if (!p.closest('.code-block') && !p.closest('.accordion-content')) {
+                            sectionText += p.textContent + ' ';
+                        }
+                    });
+                    
+                    const prompt = `Sederhanakan konsep Django "${sectionTitle}" berikut ini agar mudah dipahami oleh pemula, gunakan bahasa yang sederhana dan analogi jika memungkinkan:\n\n${sectionText.trim()}`;
+
+                    openLlmModal('Sederhanakan Konsep', '<div class="loading-spinner"></div><p class="text-center text-slate-600">Memuat penyederhanaan konsep...</p>');
+                    callGeminiAPI(prompt);
+                });
+            });
+
+        });
+    </script>
+</body>
+</html>
 
